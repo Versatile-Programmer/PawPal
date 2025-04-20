@@ -6,9 +6,9 @@ export enum PetGender {
   Unknown = "Unknown",
 }
 export interface User {
-  Id: string | number; 
-  name: string; 
-  email: string; 
+  Id: string | number;
+  name: string;
+  email: string;
   contactNumber: string;
 }
 
@@ -55,7 +55,7 @@ export interface PetListerInfoManual {
   name: string; // Or fullName
 }
 export interface Pet {
-  petId:  string; // Use number or string depending on how BigInt is serialized
+  petId: string; // Use number or string depending on how BigInt is serialized
   name: string;
   species: string;
   breed: string | null;
@@ -73,8 +73,11 @@ export interface Pet {
   isPottyTrained: boolean;
 }
 
- type PetDetailListerInfo = Pick<User, "Id" | "name" | "email" | "contactNumber">;
- type PetListerBasicInfo = Pick<User, "Id" | "name">;
+type PetDetailListerInfo = Pick<
+  User,
+  "Id" | "name" | "email" | "contactNumber"
+>;
+type PetListerBasicInfo = Pick<User, "Id" | "name" | "email" | "contactNumber">;
 export type PetDetailData = Pet & {
   lister: PetDetailListerInfo;
   // adoptionRequests?: AdoptionRequest[]; // If included
@@ -108,3 +111,27 @@ export type AdoptionRequest = {
   userId: string | number;
   requestDate: Date;
 };
+
+type RequestedPetInfo = Pick<Pet, "petId" | "name" | "imageUrl">;
+type RequesterInfo = Pick<User, "Id" | "name" | "email" | "contactNumber">;
+export type ReceivedRequestData = AdoptionRequest & {
+  pet: RequestedPetInfo;
+  requester: RequesterInfo;
+};
+
+type SentRequestPetInfo = Pick<
+  Pet,
+  "petId" | "name" | "imageUrl" | "adoptionStatus"
+> & {
+  lister: PetListerBasicInfo;
+};
+
+// Structure for a request sent by the adopter
+export type SentRequestData = AdoptionRequest & {
+  pet: SentRequestPetInfo;
+};
+
+// Structure for the API response (assuming backend wraps in 'data')
+export interface GetRequestsResponse<T> {
+  data: T[];
+}

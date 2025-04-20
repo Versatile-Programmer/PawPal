@@ -10,4 +10,6 @@ export const API_ENDPOINTS = {
   GET_PET_BY_ID: `${API_BASE_URL}/api/pets/view/:id`,
   BROWSE_PETS: `${API_BASE_URL}/api/pets/all`,
   SUBMIT_REQUEST: `${API_BASE_URL}/api/requests/create`,
+  GET_RECEIVED_REQUESTS: `${API_BASE_URL}/api/requests/received`,
+  GET_SENT_REQUESTS: `${API_BASE_URL}/api/requests/sent`,
 };

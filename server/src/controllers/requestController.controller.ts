@@ -8,11 +8,6 @@ import { emailQueue, emailQueueName } from "../jobs/EmailJob.js";
 
 
 
-
-
-
-
-
 export const createAdoptionRequest = async (req:Request, res:Response) => {
 
     try {
@@ -136,6 +131,86 @@ export const createAdoptionRequest = async (req:Request, res:Response) => {
 
 }
 
+
+export const getReceivedRequests = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: "User not authenticated" });
+      return;
+    }
+    const receivedRequests = await prisma.adoptionRequest.findMany({
+      where: {
+        pet: {
+          listedByUserId: BigInt(userId),
+        },
+      },
+      include: {
+        pet: {
+          select: { petId: true, name: true, imageUrl: true },
+        },
+        requester: {
+          select: { Id: true, name: true, email: true, contactNumber: true },
+        },
+      },
+      orderBy: {
+        requestDate: "asc", // Show newest requests first
+      },
+    });
+      res.status(200).json({ data: serializeBigInt(receivedRequests) });
+  } catch (error) {
+    console.error("Error fetching received adoption requests:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+
+export const getSentRequests = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const requesterUserId = req.user?.id;
+    if (!requesterUserId) {
+      res.status(401).json({ message: "User not authenticated" });
+      return;
+    }
+
+    // Find requests made by the current user
+    const sentRequests = await prisma.adoptionRequest.findMany({
+      where: {
+        userId: BigInt(requesterUserId), // Filter by the user making the request
+      },
+      include: {
+        pet: {
+          // Include info about the pet requested AND its current status
+          select: {
+            petId: true,
+            name: true,
+            imageUrl: true,
+            adoptionStatus: true, // Include the pet's current status!
+            lister: {
+              // Include basic lister info
+              select: { Id: true, name: true },
+            },
+          },
+        },
+      },
+      orderBy: {
+        requestDate: "desc", // Show newest requests first
+      },
+    });
+
+    res.status(200).json({ data: serializeBigInt(sentRequests) });
+  } catch (error) {
+    console.error("Error fetching sent adoption requests:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const approveRequests = async (req: Request, res: Response): Promise<void> => {
+  
+}
 
 
 

@@ -13,6 +13,7 @@ import ListPetPage from "./pages/ListPetPage";
 import MyListingsPage from "./pages/MyListingPage";
 import PetDetailPage from "./pages/PetDetailPage";
 import BrowsePetsPage from "./pages/BrowsePetsPage";
+import MyRequestsPage from "./pages/MyRequestPage";
 function App() {
   return (
     <Router>
@@ -89,8 +90,16 @@ function App() {
             </MainLayout>
           }
         />
-
-     
+        <Route
+          path="/my-requests" // <-- Add route for My Requests
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MyRequestsPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );
