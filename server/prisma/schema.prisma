@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PetGender {
+  Male
+  Female
+  Unknown
+}
+
+enum PetSize {
+  Small
+  Medium
+  Large
+}
+
+enum AdoptionStatus {
+  Available
+  Pending
+  Adopted
+  Withdrawn
+}
+
+enum RequestStatus {
+  Pending
+  Approved
+  Rejected
+  Withdrawn
+}
+
+enum NotificationType {
+  ADOPTION_REQUEST_RECEIVED
+  ADOPTION_REQUEST_APPROVED
+  ADOPTION_REQUEST_REJECTED
+  ADOPTION_REQUEST_SUBMITTED
+  NEW_PET_MATCH
+}
+
+enum RelatedEntityType {
+  PET
+  ADOPTION_REQUEST
+  USER
+}
+
+enum DocumentType {
+  VACCINATION_RECORD
+  HEALTH_CERTIFICATE
+  PHOTO
+  OTHER
+}
+
+model User {
+  Id                  BigInt             @id @default(autoincrement()) @map("user_id")
+  name                String             @map("full_name") @db.VarChar(100)
+  email               String             @unique @db.VarChar(100)
+  password            String             @map("password_hash") @db.VarChar(255)
+  password_reset_token String?           @unique @map("password_reset_token") @db.VarChar(255)
+  contactNumber       String             @map("contact_number") @db.VarChar(20)
+  token_send_at       DateTime?          @map("token_send_at") @db.Timestamp()
+  email_verified_at   DateTime?          @map("email_verified_at") @db.Timestamp()
+  email_verify_token  String?            @unique @map("email_verify_token") @db.VarChar(255)
+  created_date        DateTime           @default(now()) @map("registration_date") @db.Timestamp()
+  isActive            Boolean            @default(true) @map("is_active")
+
+  listedPets          Pet[]              @relation("ListedPets")
+  adoptionRequests    AdoptionRequest[]  @relation("AdoptionRequester")
+  notifications       Notification[]
+
+  @@map("users")
+}
+
+model Pet {
+  petId             BigInt             @id @default(autoincrement()) @map("pet_id")
+  name              String             @db.VarChar(100)
+  species           String             @db.VarChar(50)
+  breed             String?            @db.VarChar(100)
+  age               Int?
+  gender            PetGender         
+  size              PetSize?           
+  color             String?            @db.VarChar(100)
+  description       String?            @db.Text
+  isVaccinated      Boolean            @default(false) @map("is_vaccinated")
+  isPottyTrained    Boolean            @default(false) @map("is_potty_trained")
+  adoptionStatus    AdoptionStatus     @default(Available) @map("adoption_status") 
+  imageUrl          String?            @map("image_url") @db.VarChar(255)
+  dateListed        DateTime           @default(now()) @map("date_listed") @db.Timestamp()
+  listedByUserId    BigInt             @map("listed_by_user_id")
+  
+  lister            User               @relation("ListedPets", fields: [listedByUserId], references: [Id], onDelete: Cascade)
+  adoptionRequests  AdoptionRequest[]
+ 
+
+  @@index([listedByUserId])
+  @@map("pets")
+}
+
+model AdoptionRequest {
+  requestId         BigInt            @id @default(autoincrement()) @map("request_id")
+  petId             BigInt            @map("pet_id")
+  userId            BigInt            @map("user_id")
+  requestDate       DateTime          @default(now()) @map("request_date") @db.Timestamp()
+  status            RequestStatus     @default(Pending) 
+  messageToLister   String?           @map("message_to_lister") @db.Text
+
+  pet               Pet               @relation(fields: [petId], references: [petId], onDelete: Cascade)
+  requester         User              @relation("AdoptionRequester", fields: [userId], references: [Id], onDelete: Cascade)
+
+  @@index([petId])
+  @@index([userId])
+  @@map("adoption_requests")
+}
+
+model Notification {
+  notificationId    BigInt             @id @default(autoincrement()) @map("notification_id")
+  userId            BigInt             @map("user_id")
+  notificationType  NotificationType   @map("notification_type") 
+  message           String             @db.Text
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamp()
+  isRead            Boolean            @default(false) @map("is_read")
+  relatedEntityId   BigInt?            @map("related_entity_id")
+  relatedEntityType RelatedEntityType? @map("related_entity_type") 
+
+  user              User               @relation(fields: [userId], references: [Id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
