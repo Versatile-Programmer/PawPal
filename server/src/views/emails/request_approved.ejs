@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adoption Request Approved!</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+
+        h1 {
+            color: #008080;
+            /* Teal color */
+        }
+
+        strong {
+            font-weight: bold;
+        }
+
+        a {
+            color: #008080;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #777;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Congratulations, <%= adopterName %>!</h1>
+
+        <p>We're thrilled to let you know that your adoption request for <strong>
+                <%= petName %>
+            </strong> has been approved by the lister, <strong>
+                <%= listerName %>
+            </strong>.</p>
+
+        <p>The pet is now reserved for you and marked as adopted in our system.</p>
+
+        <p><strong>Next Steps:</strong> Please contact the lister directly using the details available on the PawPal pet
+            page to arrange pickup and finalize the adoption process. You can view the pet's page here:</p>
+        <p style="text-align: center; margin: 20px 0;">
+            <!-- You'll need to pass the full URL to the pet detail page -->
+            <a href="<%= petDetailUrl %>"
+                style="background-color: #008080; color: white; padding: 10px 15px; border-radius: 5px; text-decoration: none;">View
+                <%= petName %>'s Page</a>
+        </p>
+
+        <p>We wish you and <%= petName %> many happy years together!</p>
+
+        <div class="footer">
+            Thank you for using PawPal!
+        </div>
+    </div>
+</body>
+
+</html>

@@ -3,6 +3,8 @@ import { formatError, renderEmailEjs, serializeBigInt } from "../helper.js";
 import prisma from "../config/database.js";
 import { AdoptionStatus, RequestStatus } from "@prisma/client";
 import { emailQueue, emailQueueName } from "../jobs/EmailJob.js";
+const clientAppUrl = process.env.CLIENT_APP_URL || "http://localhost:5173";
+const browsePetsUrl = `${clientAppUrl}/browse-pets`;
 export const createAdoptionRequest = async (req, res) => {
     try {
         const adopterId = req.user?.id;
@@ -105,9 +107,7 @@ export const createAdoptionRequest = async (req, res) => {
                 relatedEntityId: pet.petId,
             },
         });
-        res
-            .status(201)
-            .json({
+        res.status(201).json({
             message: "Adoption request submitted successfully!",
             data: serializeBigInt(newRequest),
         });
@@ -188,4 +188,308 @@ export const getSentRequests = async (req, res) => {
     }
 };
 export const approveRequests = async (req, res) => {
+    console.log("approveRequests:", req.params);
+    const { id } = req.params;
+    const listerId = req.user?.id;
+    if (!listerId) {
+        res.status(401).json({ message: "User not authenticated" });
+        return;
+    }
+    const requestId = BigInt(id);
+    if (!requestId) {
+        res.status(400).json({ message: "Invalid request ID" });
+        return;
+    }
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            console.log("approveRequests: inside transaction");
+            const request = await tx.adoptionRequest.findUnique({
+                where: {
+                    requestId: requestId,
+                },
+                include: {
+                    pet: { include: { lister: true } }, // Need lister detail of pet
+                    requester: true, // Need requester details of pet
+                },
+            });
+            if (!request)
+                throw new Error("Request not found."); // Custom error type might be better
+            if (request.pet.listedByUserId !== BigInt(listerId))
+                throw new Error("Forbidden: Not pet owner.");
+            if (request.status !== RequestStatus.Pending)
+                throw new Error(`Request is already ${request.status}.`);
+            if (request.pet.adoptionStatus !== AdoptionStatus.Available)
+                throw new Error(`Pet is not Available (${request.pet.adoptionStatus}).`);
+            // 2. update the target request to Approved
+            const updatedRequest = await tx.adoptionRequest.update({
+                where: { requestId: requestId },
+                data: { status: RequestStatus.Approved },
+            });
+            // 3. Update the Pet status to Adopted
+            const updatedPet = await tx.pet.update({
+                where: { petId: request.petId },
+                data: { adoptionStatus: AdoptionStatus.Adopted },
+            });
+            // 4. Find all OTHER pending requests for the SAME pet
+            const otherRequests = await tx.adoptionRequest.findMany({
+                where: {
+                    petId: request.petId,
+                    status: RequestStatus.Pending,
+                    requestId: { not: requestId }, // Exclude the one we just approved
+                },
+                include: {
+                    requester: { select: { Id: true, email: true, name: true } },
+                }, // Need other adopters' info
+            });
+            console.log("approveRequests: otherRequests:", otherRequests);
+            // Now reject them
+            const rejectedIds = otherRequests.map((r) => r.requestId);
+            if (rejectedIds.length > 0) {
+                await tx.adoptionRequest.updateMany({
+                    where: { requestId: { in: rejectedIds } },
+                    data: { status: RequestStatus.Rejected },
+                });
+            }
+            return {
+                updatedRequest,
+                updatedPet,
+                approvedAdopter: request.requester,
+                otherRejectedAdopters: otherRequests.map((r) => r.requester),
+            };
+            // -----Transacton END ------
+        });
+        // --- 5. Send Notifications & Emails (outside transaction) ---
+        const { updatedRequest, updatedPet, approvedAdopter, otherRejectedAdopters, } = result;
+        console.log("approveRequests: result:", result);
+        // a) Notify Approved Adopter
+        await prisma.notification.create({
+            data: {
+                userId: approvedAdopter.Id,
+                notificationType: "ADOPTION_REQUEST_APPROVED",
+                message: `Congratulations! Your request for ${updatedPet.name} was approved. Please contact the lister to arrange pickup.`,
+                relatedEntityType: "PET",
+                relatedEntityId: updatedPet.petId,
+            },
+        });
+        const petDetailUrl = `${clientAppUrl}/pets/manage/${updatedPet.petId}`;
+        if (approvedAdopter.email) {
+            // Update email template to encourage contact, remove meeting details placeholder
+            const body = await renderEmailEjs("request_approved", {
+                adopterName: approvedAdopter.name,
+                petName: updatedPet.name,
+                listerName: req.user?.name,
+                petDetailUrl,
+            });
+            await emailQueue.add(emailQueueName, {
+                to: approvedAdopter.email,
+                subject: `Your request for ${updatedPet.name} was approved!`,
+                body,
+            });
+        }
+        // b) Notify Rejected Adopters
+        for (const rejectedAdopter of otherRejectedAdopters) {
+            await prisma.notification.create({
+                data: {
+                    userId: rejectedAdopter.Id,
+                    notificationType: "ADOPTION_REQUEST_REJECTED",
+                    message: `Sorry, your request for ${updatedPet.name} was rejected.`,
+                    relatedEntityType: "PET",
+                    relatedEntityId: updatedPet.petId,
+                },
+            });
+            if (rejectedAdopter.email) {
+                const body = await renderEmailEjs("pet_adopted_reject", {
+                    adopterName: approvedAdopter.name,
+                    petName: updatedPet.name,
+                    browsePetsUrl
+                });
+                await emailQueue.add(emailQueueName, {
+                    to: rejectedAdopter.email,
+                    subject: `Update on your request for ${updatedPet.name}`,
+                    body,
+                });
+            }
+        }
+        res.status(200).json({
+            message: "Request approved.",
+            data: serializeBigInt(updatedRequest),
+        });
+    }
+    catch (error) {
+        console.error(`Error withdrawing request ${requestId}:`, error);
+        if (error.message.includes("Not found") || error.code === "P2025") {
+            res.status(404).json({ message: "Request not found." });
+            return;
+        }
+        res
+            .status(500)
+            .json({ message: "Internal server error withdrawing request." });
+        return;
+    }
+};
+export const rejectRequests = async (req, res) => {
+    const { id } = req.params;
+    const listerId = req.user?.id;
+    if (!listerId) {
+        res.status(401).json({ message: "User not authenticated" });
+        return;
+    }
+    const requestId = BigInt(id);
+    if (!requestId) {
+        res.status(400).json({ message: "Invalid request ID" });
+        return;
+    }
+    console.log(`Rejecting request ${requestId}`);
+    try {
+        // Use transaction for consistency, although less critical than approve
+        const result = await prisma.$transaction(async (tx) => {
+            console.log(`Finding request ${requestId}`);
+            // 1. Find request, verify ownership and status
+            const request = await tx.adoptionRequest.findUnique({
+                where: { requestId: requestId },
+                include: {
+                    pet: true, // Need pet name/ID
+                    requester: true, // Need adopter details
+                },
+            });
+            if (!request)
+                throw new Error("Request not found.");
+            console.log(`Found request: ${request.requestId}`);
+            console.log(`listedByUserId : ${request.pet.listedByUserId}, listerId : ${listerId}`);
+            if (request.pet.listedByUserId !== BigInt(listerId)) {
+                throw new Error("Forbidden: Not pet owner.");
+            }
+            if (request.status !== RequestStatus.Pending)
+                throw new Error(`Request is already ${request.status}.`);
+            // 2. Update request to Rejected
+            console.log(`Updating request ${requestId} to Rejected`);
+            const updatedRequest = await tx.adoptionRequest.update({
+                where: { requestId: requestId },
+                data: { status: RequestStatus.Rejected },
+            });
+            return {
+                updatedRequest,
+                rejectedAdopter: request.requester,
+                pet: request.pet,
+            };
+        });
+        // --- End Transaction ---
+        console.log(`Transaction completed`);
+        // 3. Send Notifications & Emails
+        const { updatedRequest, rejectedAdopter, pet } = result;
+        await prisma.notification.create({
+            /* ... data for ADOPTION_REQUEST_REJECTED ... */
+            data: {
+                userId: rejectedAdopter.Id,
+                notificationType: "ADOPTION_REQUEST_REJECTED",
+                message: `Sorry, your request for ${pet.name} was rejected.`,
+                relatedEntityType: "PET",
+                relatedEntityId: pet.petId,
+            },
+        });
+        console.log(`Notification created for ${rejectedAdopter.name}`);
+        if (rejectedAdopter.email) {
+            console.log(`Sending email to ${rejectedAdopter.email}`);
+            const body = await renderEmailEjs("request_rejected", {
+                adopterName: rejectedAdopter.name,
+                petName: pet.name,
+                listerName: req.user?.name,
+                browsePetsUrl
+            });
+            await emailQueue.add(emailQueueName, {
+                to: rejectedAdopter.email,
+                subject: `Update on your request for ${pet.name}`,
+                body,
+            });
+        }
+        res
+            .status(200)
+            .json({ message: "Request rejected.", data: serializeBigInt(updatedRequest) });
+        return;
+    }
+    catch (error) {
+        console.error(`Error rejecting request ${requestId}:`, error);
+        if (error.message.includes("Not found") || error.code === "P2025") {
+            res.status(404).json({ message: "Request not found." });
+            return;
+        }
+        if (error.message.includes("Request is already")) {
+            res.status(409).json({ message: error.message });
+            return;
+        }
+        res
+            .status(500)
+            .json({ message: "Internal server error rejecting request." });
+        return;
+    }
+};
+export const withdrawRequest = async (req, res) => {
+    const { id } = req.params;
+    const adopterUserId = req.user?.id; // Adopter making the request
+    if (!adopterUserId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+    }
+    const requestId = BigInt(id);
+    if (!requestId) {
+        res.status(400).json({ message: "Invalid Request ID" });
+        return;
+    }
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Find request, verify ownership (by adopter) and status
+            const request = await tx.adoptionRequest.findUnique({
+                where: { requestId: requestId },
+                include: { pet: { include: { lister: { select: { Id: true } } } } }, // Need lister ID for notification
+            });
+            if (!request) {
+                throw new Error("Request Not Found");
+            }
+            if (request.userId !== BigInt(adopterUserId)) {
+                throw new Error("This is not the correct user");
+            }
+            if (request.status !== RequestStatus.Pending)
+                throw new Error(`Cannot withdraw a request with status ${request.status}.`);
+            // 2. Update request to Withdrawn
+            const updatedRequest = await tx.adoptionRequest.update({
+                where: { requestId: requestId },
+                data: { status: RequestStatus.Withdrawn },
+            });
+            return { updatedRequest, listerId: request.pet.lister.Id };
+        });
+        // --- End Transaction ---
+        // 3. Send Notification to Lister
+        const { updatedRequest, listerId } = result;
+        await prisma.notification.create({
+            data: {
+                userId: listerId,
+                notificationType: "ADOPTION_REQUEST_WITHDRAWN",
+                message: `An adoption request for one of your pets was withdrawn.`, // Keep it generic or add details
+                relatedEntityType: "ADOPTION_REQUEST",
+                relatedEntityId: updatedRequest.requestId,
+            },
+        });
+        res
+            .status(200)
+            .json({ message: "Request withdrawn.", data: serializeBigInt(updatedRequest) });
+    }
+    catch (error) {
+        console.error(`Error withdrawing request ${requestId}:`, error);
+        if (error.message.includes("Not found") || error.code === "P2025") {
+            res.status(404).json({ message: "Request not found." });
+            return;
+        }
+        if (error.message.includes("Forbidden")) {
+            res.status(403).json({ message: "You cannot withdraw this request." });
+            return;
+        }
+        if (error.message.includes("Cannot withdraw")) {
+            res.status(409).json({ message: error.message });
+            return;
+        }
+        res
+            .status(500)
+            .json({ message: "Internal server error withdrawing request." });
+        return;
+    }
 };

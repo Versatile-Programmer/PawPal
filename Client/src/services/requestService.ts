@@ -44,9 +44,9 @@ export const submitAdoptionRequest = async (
   }
 };
 
-export const getReceivedAdoptionRequests = async (): Promise<
-  GetRequestsResponse<ReceivedRequestData>
-> => {
+
+
+export const getReceivedAdoptionRequests = async (): Promise<GetRequestsResponse<ReceivedRequestData>> => {
   try {
     const token = localStorage.getItem("authToken");
     if (!token) throw new Error("User not authenticated.");
@@ -62,9 +62,9 @@ export const getReceivedAdoptionRequests = async (): Promise<
   }
 };
 
-export const getSentAdoptionRequests = async (): Promise<
-  GetRequestsResponse<SentRequestData>
-> => {
+ 
+
+export const getSentAdoptionRequests = async (): Promise<GetRequestsResponse<SentRequestData>> => {
   try {
     const token = localStorage.getItem("authToken");
     if (!token) throw new Error("User not authenticated.");
@@ -76,6 +76,62 @@ export const getSentAdoptionRequests = async (): Promise<
     return response.data;
   } catch (error) {
     console.error("Error fetching sent requests:", error);
+    throw error;
+  }
+};
+
+export const approveAdoptionRequest = async (
+  requestId: number | string | BigInt,
+): Promise<any> => {
+  // Define specific response type if needed
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) throw new Error("User not authenticated.");
+    const response = await axios.put(
+      API_ENDPOINTS.APPROVE_REQUEST.replace(":id", requestId.toString()),{},
+      { headers: { Authorization: token } }
+    );
+    return response;
+  } catch (error) {
+    console.error(`Error approving request ${requestId}:`, error);
+    throw error;
+  }
+};
+
+export const rejectAdoptionRequest = async (
+  requestId: number | string | BigInt
+): Promise<any> => {
+  // Define specific response type if needed
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) throw new Error("User not authenticated.");
+    const response = await axios.put( 
+      API_ENDPOINTS.REJECT_REQUEST.replace(":id", requestId.toString()),{},
+      { headers: { Authorization: token } }
+    );
+    return response;
+  } catch (error) {
+    console.error(`Error rejecting request ${requestId}:`, error);
+    throw error;
+  }
+};
+
+
+export const withdrawAdoptionRequest = async (
+  requestId: number | string | BigInt
+): Promise<any> => {
+  // Define specific response type if needed
+  try {
+    // Using DELETE method matching the backend route
+    const token = localStorage.getItem("authToken");
+    if (!token) throw new Error("User not authenticated.");
+    const response = await axios.delete(
+      API_ENDPOINTS.WITHDRAW_REQUEST.replace(":id", requestId.toString()),
+      { headers: { Authorization: token } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error withdrawing request ${requestId}:`, error);
     throw error;
   }
 };

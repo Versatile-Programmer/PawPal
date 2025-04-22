@@ -12,4 +12,7 @@ export const API_ENDPOINTS = {
   SUBMIT_REQUEST: `${API_BASE_URL}/api/requests/create`,
   GET_RECEIVED_REQUESTS: `${API_BASE_URL}/api/requests/received`,
   GET_SENT_REQUESTS: `${API_BASE_URL}/api/requests/sent`,
+  APPROVE_REQUEST: `${API_BASE_URL}/api/requests/:id/approve`,
+  REJECT_REQUEST: `${API_BASE_URL}/api/requests/:id/reject`,
+  WITHDRAW_REQUEST: `${API_BASE_URL}/api/requests/:id/withdraw`,
 };

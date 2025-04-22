@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adoption Request Update</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+
+        h1 {
+            color: #555;
+        }
+
+        strong {
+            font-weight: bold;
+        }
+
+        a {
+            color: #008080;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #777;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Update on Your Adoption Request</h1>
+
+        <p>Hello <%= adopterName %>,</p>
+
+        <p>This email is regarding your adoption request for <strong>
+                <%= petName %>
+            </strong>.</p>
+
+        <p>Unfortunately, the lister has decided not to proceed with your request at this time. We understand this may
+            be disappointing news.</p>
+
+        <p>There are many other wonderful pets waiting for homes on PawPal. We encourage you to continue browsing:</p>
+        <p style="text-align: center; margin: 20px 0;">
+            <!-- You'll need to pass the full URL to the browse page -->
+            <a href="<%= browsePetsUrl %>"
+                style="background-color: #008080; color: white; padding: 10px 15px; border-radius: 5px; text-decoration: none;">Browse
+                Available Pets</a>
+        </p>
+
+        <p>Thank you for considering adoption through PawPal.</p>
+
+        <div class="footer">
+            The PawPal Team
+        </div>
+    </div>
+</body>
+
+</html>

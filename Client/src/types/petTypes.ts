@@ -17,7 +17,7 @@ export enum PetSize {
   Medium = "Medium",
   Large = "Large",
 }
-enum RequestStatus {
+export enum RequestStatus {
   Pending = "Pending",
   Approved = "Approved",
   Rejected = "Rejected",
