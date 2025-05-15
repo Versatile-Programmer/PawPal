@@ -5,6 +5,7 @@ import { PawPrint, LogIn, UserPlus } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { authTokenState, currentUserState, AuthUser } from "@/store/authAtom"; // Ensure correct path to atoms
 import { useRecoilValue, useSetRecoilState } from "recoil";
+import NotificationBell from "../notification/NotificationBell";
 
 const Header: React.FC = () => {
   const setAuthToken = useSetRecoilState(authTokenState);
@@ -44,6 +45,8 @@ const Header: React.FC = () => {
             <>
               {/* Consider adding a link to a profile/dashboard here */}
               {/* <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}><User /></Button> */}
+              <span /* ... Hello user ... */>Hello, {currentUser.name}!</span>
+              <NotificationBell /> {/* <-- Add Notification Bell here */}
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 Logout
               </Button>

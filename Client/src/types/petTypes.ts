@@ -23,6 +23,7 @@ export enum RequestStatus {
   Rejected = "Rejected",
   Withdrawn = "Withdrawn",
 }
+
 export interface PetDocument {
   documentId: string | number; // Use string for BigInt serialization safety
   petId: string | number; // Foreign key

@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/dialog";
 
 // --- Service & State ---
-import { getPetById, deletePetById } from "@/services/petService"; // Added deletePetById
+import { getPetById, deletePetListing } from "@/services/petService"; // Added deletePetById
 import { isAxiosError } from "@/services/authService";
 import { currentUserState } from "@/store/authAtom"; // Ensure correct path
 // Use the detailed type that includes nested objects
@@ -139,7 +139,7 @@ const PetDetailPage: React.FC = () => {
     toast.info(`Deleting ${pet.name}...`);
     try {
       // Call the actual delete service function
-      await deletePetById(pet.petId); // Pass correct ID
+      await deletePetListing(pet.petId); // Pass correct ID
       toast.success(`${pet.name} has been removed from listings.`);
       navigate("/my-listings"); // Redirect after successful delete
     } catch (deleteError) {
@@ -294,9 +294,7 @@ const PetDetailPage: React.FC = () => {
                       <DialogTitle>Are you sure?</DialogTitle>
                       <DialogDescription>
                         This action cannot be undone. This will permanently
-                        delete the listing for "{pet.name}". Associated
-                        documents might also be removed (depending on backend
-                        setup).
+                        delete the listing for "{pet.name}". You need to fill details again to relist it.
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2 sm:justify-start mt-4">

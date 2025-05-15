@@ -17,6 +17,9 @@ interface GetPetByIdResponse {
 interface GetPetsResponse{
   data: Pet[];
 }
+interface DeletePetResponse {
+  message: string;
+}
 /**
  * Makes an API call to create a new pet listing using FormData (for file uploads).
  * The authentication token is attached automatically by the apiClient interceptor.
@@ -120,9 +123,28 @@ export const browseAvailablePets = async (
   }
 };
 
-export const deletePetById = async (petId: string): Promise<void> => {
-  console.log(`Deleting pet with ID: ${petId}`);
-  return;
-}
+export const deletePetListing = async (
+  petId: number | string | BigInt
+): Promise<DeletePetResponse> => {
+  try {
+    const idStr = String(petId);
+    console.log(`Requesting DELETE for pet ID: ${idStr}`);
+
+    // --- OR plain Axios ---
+    
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("User not authenticated.");
+      const response = await axios.delete<DeletePetResponse>(
+          API_ENDPOINTS.DELETE_PET.replace(':id', idStr), // Define DELETE_PET endpoint
+          { headers: { Authorization: token } }
+      );
+
+    console.log("Delete pet response:", response);
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting pet ${petId}:`, error);
+    throw error;
+  }
+};
 
 

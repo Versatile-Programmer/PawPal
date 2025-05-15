@@ -1,8 +1,12 @@
 import prisma from "../config/database.js";
 import { createPetSchema } from "../validation/petValidation.js";
-import { formatError, serializeBigInt } from "../helper.js";
+import { formatError, renderEmailEjs, serializeBigInt } from "../helper.js";
+import path from "path";
 import fs from "fs";
 import { AdoptionStatus } from "@prisma/client";
+import { RequestStatus } from "@prisma/client";
+import { emailQueue, emailQueueName } from "../jobs/EmailJob.js";
+import { fileURLToPath } from "url";
 export const createPetHandler = async (req, res) => {
     console.log("Inside createPetHandler");
     const userId = req.user?.id;
@@ -194,5 +198,136 @@ export const getAllAvailablePets = async (req, res) => {
     catch (error) {
         console.error("Error fetching available pets:", error);
         res.status(500).json({ message: "Internal server error" });
+    }
+};
+export const deletePet = async (req, res) => {
+    const { id } = req.params;
+    const listerUserId = req.user?.id; // From authenticateToken
+    if (!listerUserId) {
+        res.status(401).json({ message: "User not authenticated" });
+        return;
+    }
+    const petId = parseInt(id, 10);
+    if (isNaN(petId)) {
+        res.status(400).json({ message: "Invalid Pet ID format." });
+        return;
+    }
+    try {
+        // --- Use Transaction for safety ---
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Find the Pet and verify ownership
+            const pet = await tx.pet.findUnique({
+                where: { petId: petId },
+                select: {
+                    // Select only necessary fields
+                    listedByUserId: true,
+                    imageUrl: true,
+                    name: true, // Needed for notifications
+                },
+            });
+            if (!pet) {
+                res.status(400).json({ message: "Pet not found" });
+                return; // Custom error or specific handling
+            }
+            if (pet.listedByUserId !== BigInt(listerUserId)) {
+                throw new Error("Forbidden"); // Custom error or specific handling
+            }
+            // 2. Find users with PENDING requests for this pet BEFORE deleting
+            const pendingRequests = await tx.adoptionRequest.findMany({
+                where: {
+                    petId: petId,
+                    status: RequestStatus.Pending,
+                },
+                include: {
+                    // Include requester info for notifications
+                    requester: { select: { Id: true, email: true, name: true } },
+                },
+            });
+            // 3. Permanently delete the pet record
+            // NOTE: If you have `onDelete: Cascade` on AdoptionRequest's relation to Pet,
+            // the requests will be deleted automatically by the database here.
+            // If not using Cascade, you'd need to delete requests manually:
+            // await tx.adoptionRequest.deleteMany({ where: { petId: petId } });
+            await tx.pet.delete({
+                where: { petId: petId },
+            });
+            // Return pet info needed for file deletion and notifications
+            return {
+                petImageUrl: pet.imageUrl,
+                petName: pet.name,
+                pendingRequesters: pendingRequests.map((r) => r.requester),
+            };
+        });
+        // --- End Transaction ---
+        // --- 4. Delete Associated Image File (Outside Transaction) ---
+        if (result?.petImageUrl) {
+            const __filename = fileURLToPath(import.meta.url);
+            const __dirname = path.dirname(__filename);
+            // Path relative to this controller file's compiled location (dist/controllers)
+            const imagePath = path.join(__dirname, "../../public", result.petImageUrl); // Assumes imageUrl starts with /uploads/...
+            console.log(`Attempting to delete image file: ${imagePath}`);
+            fs.unlink(imagePath, (err) => {
+                if (err && err.code !== "ENOENT") {
+                    // Ignore error if file already not found
+                    console.error(`Error deleting pet image ${imagePath}:`, err);
+                }
+                else if (!err) {
+                    console.log(`Successfully deleted pet image: ${imagePath}`);
+                }
+            });
+        }
+        // --- 5. Notify Pending Requesters (Outside Transaction) ---
+        for (const requester of result.pendingRequesters) {
+            // a) In-App Notification
+            await prisma.notification.create({
+                data: {
+                    userId: requester.Id,
+                    notificationType: "PET_LISTING_DELETED", // Use a specific type
+                    message: `The listing for "${result.petName}", which you requested, has been removed by the lister.`,
+                    // No related entity needed as the pet/request might be gone
+                },
+            });
+            // b) Email Notification
+            if (requester.email) {
+                try {
+                    const emailBody = await renderEmailEjs("listing_deleted", {
+                        adopterName: requester.name,
+                        petName: result.petName,
+                    });
+                    await emailQueue.add(emailQueueName, {
+                        to: requester.email,
+                        subject: `Update regarding your request for ${result.petName}`,
+                        body: emailBody,
+                    });
+                }
+                catch (emailError) {
+                    console.error(`Failed to queue deletion notification email for ${requester.email}:`, emailError);
+                }
+            }
+        }
+        // 6. Send Success Response to Lister
+        res
+            .status(200)
+            .json({
+            message: `Listing for "${result.petName}" deleted successfully.`,
+        });
+    }
+    catch (error) {
+        console.error(`Error deleting pet ${petId}:`, error);
+        if (error.message === "NotFound" || error.code === "P2025") {
+            // P2025 = Record to delete does not exist
+            res.status(404).json({ message: "Pet listing not found." });
+            return;
+        }
+        if (error.message === "Forbidden") {
+            res
+                .status(403)
+                .json({ message: "You are not authorized to delete this listing." });
+            return;
+        }
+        // Handle other potential Prisma or filesystem errors
+        res
+            .status(500)
+            .json({ message: "Internal server error deleting pet listing." });
     }
 };

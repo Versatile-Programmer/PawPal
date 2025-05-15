@@ -15,4 +15,8 @@ export const API_ENDPOINTS = {
   APPROVE_REQUEST: `${API_BASE_URL}/api/requests/:id/approve`,
   REJECT_REQUEST: `${API_BASE_URL}/api/requests/:id/reject`,
   WITHDRAW_REQUEST: `${API_BASE_URL}/api/requests/:id/withdraw`,
+  DELETE_PET: `${API_BASE_URL}/api/pets/delete/:id`,
+  GET_NOTIFICATIONS: `${API_BASE_URL}/api/notifications/get`,
+  MARK_NOTIFICATION_READ: `${API_BASE_URL}/api/notifications/:notificationId/read`,
+  MARK_ALL_NOTIFICATIONS_READ: `${API_BASE_URL}/api/notifications/all/read`,
 };
