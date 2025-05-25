@@ -14,6 +14,8 @@ import MyListingsPage from "./pages/MyListingPage";
 import PetDetailPage from "./pages/PetDetailPage";
 import BrowsePetsPage from "./pages/BrowsePetsPage";
 import MyRequestsPage from "./pages/MyRequestPage";
+// import { Edit } from "lucide-react";
+import EditPetPage from "./pages/EditPetPage";
 function App() {
   return (
     <Router>
@@ -97,6 +99,14 @@ function App() {
               <MainLayout>
                 <MyRequestsPage />
               </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pets/edit/:petId" // <-- Add route for My Requests
+          element={
+            <ProtectedRoute>
+                <EditPetPage />
             </ProtectedRoute>
           }
         />

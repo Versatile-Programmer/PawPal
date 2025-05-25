@@ -19,4 +19,5 @@ export const API_ENDPOINTS = {
   GET_NOTIFICATIONS: `${API_BASE_URL}/api/notifications/get`,
   MARK_NOTIFICATION_READ: `${API_BASE_URL}/api/notifications/:notificationId/read`,
   MARK_ALL_NOTIFICATIONS_READ: `${API_BASE_URL}/api/notifications/all/read`,
+  UPDATE_MY_PETS: `${API_BASE_URL}/api/pets/update/:id`,
 };

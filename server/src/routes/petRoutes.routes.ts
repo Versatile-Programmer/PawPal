@@ -4,7 +4,8 @@ import { createPetHandler,
   deletePet,
   getAllAvailablePets,
   getMyListedPets,
-  getPetById } from "../controllers/petController.controller.js";
+  getPetById, 
+  updatePetHandler} from "../controllers/petController.controller.js";
 import upload  from "../config/multerConfig.js";
 const router = Router();
 
@@ -15,7 +16,12 @@ router.post(
   upload.single("petImage"),
   createPetHandler
 );
-
+router.put(
+  "/update/:id",
+  authMiddleware,
+  upload.single("petImage"), // Process new image if provided
+  updatePetHandler
+);
 router.get("/my-listings", authMiddleware, getMyListedPets);
 router.get("/view/:id",  getPetById);
 router.get("/all", getAllAvailablePets);

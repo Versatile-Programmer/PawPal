@@ -11,6 +11,11 @@ interface CreatePetSuccessResponse {
   data: PetFormData; // Or adjust if backend returns something else
 }
 
+interface UpdatePetSuccessResponse {
+  message: string;
+  data: Pet; // Backend returns the updated Pet object
+}
+
 interface GetPetByIdResponse {
   data: PetDetailData;
 }
@@ -103,7 +108,88 @@ export const getPetById = async (
   }
 };
 
+// export const updatePetDetails = async (
+//   petId: string | number,
+//   formData: FormData // Always send FormData for updates involving potential image change
+// ): Promise<UpdatePetSuccessResponse> => {
+//   try {
+//     const idStr = String(petId);
+//     console.log(`[PetService] Updating pet ID: ${idStr} with FormData`);
 
+//     // Log FormData entries for debugging
+//     // for (let [key, value] of formData.entries()) {
+//     //     console.log(`FormData - ${key}:`, value);
+//     // }
+
+//     // const response = await apiClient.put<UpdatePetSuccessResponse>(
+//     //   `/pets/${idStr}`, // Your backend PUT endpoint
+//     //   formData
+//     //   // Axios automatically sets Content-Type for FormData
+//     // );
+
+//     const token = localStorage.getItem("authToken");
+//     if (!token) throw new Error("User not authenticated.");
+//     const response = await axios.put<UpdatePetSuccessResponse>(
+//       API_ENDPOINTS.UPDATE_MY_PETS,formData,
+//       { headers: { Authorization: token } }
+//     );
+
+//     console.log("[PetService] Update pet success response:", response);
+//     return response.data;
+//   } catch (error) {
+//     console.error(`[PetService] Error updating pet ID ${petId}:`, error);
+//     throw error;
+//   }
+// };
+export const updatePetDetails = async (
+  petId: string | number,
+  formData: FormData
+): Promise<UpdatePetSuccessResponse> => {
+  try {
+    const idStr = String(petId);
+    console.log(`[PetService] Updating pet ID: ${idStr} with FormData`);
+
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      console.error("[PetService] User not authenticated. No token found.");
+      throw new Error("User not authenticated.");
+    }
+
+    // Construct the correct URL by replacing :id
+    // Option 1: If API_ENDPOINTS.UPDATE_MY_PETS is the template string
+    // Ensure API_ENDPOINTS.UPDATE_MY_PETS is something like `${API_BASE_URL}/api/pets/update/:id`
+    const templateUrl = API_ENDPOINTS.UPDATE_MY_PETS; // e.g., "http://localhost:5005/api/pets/update/:id"
+    const actualUpdateUrl = templateUrl.replace(":id", idStr);
+
+    // Option 2: If you prefer to build it from parts
+    // const actualUpdateUrl = `${API_BASE_URL}/api/pets/update/${idStr}`;
+
+    console.log(`[PetService] Sending PUT request to URL: ${actualUpdateUrl}`);
+
+    const response = await axios.put<UpdatePetSuccessResponse>(
+      actualUpdateUrl, // Use the dynamically constructed URL
+      formData,
+      { headers: { Authorization: token} } // Common practice to add "Bearer " prefix
+    );
+
+    console.log("[PetService] Update pet success response:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error(
+      `[PetService] Error updating pet ID ${petId}:`,
+      error.response ? error.response.data : error.message
+    );
+    if (axios.isAxiosError(error) && error.response) {
+      // You can throw a more specific error object if needed
+      throw {
+        message: error.response.data.message || "Failed to update pet.",
+        status: error.response.status,
+        errors: error.response.data.errors,
+      };
+    }
+    throw error; // Re-throw original error if not an Axios error or no response
+  }
+};
 export const browseAvailablePets = async (
   page: number = 1,
   limit: number = 12
