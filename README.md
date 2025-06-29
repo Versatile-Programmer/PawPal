@@ -130,13 +130,12 @@ The frontend will be available at `http://localhost:5173` and the backend at `ht
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/yourusername/pawpal/issues).
-
+Contributions, issues, and feature requests are welcome!
 ---
 
 ## 🧑‍💻 Author
 
--   **Raj Raushan** - [GitHub](https://github.com/Versatile-Programmer) - [LinkedIn](www.linkedin.com/in/raj-raushan-43860b248)
+-   **Raj Raushan** - [GitHub](https://github.com/Versatile-Programmer) - [LinkedIn](https://www.linkedin.com/in/raj-raushan-43860b248/)
 
 ---
 
