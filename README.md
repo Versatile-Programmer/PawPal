@@ -83,9 +83,7 @@ To get a local copy up and running, follow these steps.
     # Create a .env file based on .env.example and fill in your DB, Redis, JWT, and SMTP credentials.
     cp .env.example .env 
     # Run Prisma migrations to set up the database schema
-    npx prisma migrate dev
-    # (Optional) Seed the database
-    npx prisma db seed
+    npx prisma generate && npx prisma migrate dev
     # Start the backend server
     npm run dev
     ```
@@ -109,28 +107,16 @@ Using Docker is the recommended way to run the entire stack consistently.
     cd pawpal
     ```
 2.  **Setup Environment Variables:**
-    - Create a `.env` file in the `server` directory from `.env.example`.
-    - Create a `.env` file in the `frontend` directory from `.env.example`.
-    - Create a `db.env` file in the root from `db.env.example` for PostgreSQL credentials.
+    - Create a `.env` file in the `root` directory with name `.env`.
+    - For now i am pushing my `.env` file to use and review my project, i will replace it later with better alternative such as IAM.
 3.  **Build and Run:**
     ```sh
     docker-compose up --build -d
     ```
-4.  **Run Migrations:**
-    ```sh
-    # Find the container ID for your backend service
-    docker ps
-    # Execute the migration command inside the running container
-    docker exec <backend_container_id> npx prisma migrate deploy
-    ```
+    - After running this command a container will start in your docker.
 
-The frontend will be available at `http://localhost:5173` and the backend at `http://localhost:3001`.
+The frontend will be available at `http://localhost:5173` and the backend at `http://localhost:5005`.
 
----
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome!
 ---
 
 ## 🧑‍💻 Author
@@ -142,5 +128,4 @@ Contributions, issues, and feature requests are welcome!
 
 ## 🙏 Acknowledgments
 
--   Guidance from Prof. Sobhanjana Kalita.
 -   The open-source community for the amazing tools and libraries used.
