@@ -108,7 +108,20 @@ Using Docker is the recommended way to run the entire stack consistently.
     ```
 2.  **Setup Environment Variables:**
     - Create a `.env` file in the `root` directory with name `.env`.
-    - For now i am pushing my `.env` file to use and review my project, i will replace it later with better alternative such as IAM.
+    - Create a .env file based on .env.example and fill in your DB, Redis, JWT, and SMTP credentials.
+```env
+POSTGRES_DB=pawpaldb
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=mypassword
+BACKEND_PORT=5005
+FRONTEND_PORT=5173
+SMTP_HOST=your_SMTP_HOST
+SMTP_USER=YOUR_SMTP_USER
+SMTP_PASSWORD=YOUR_SMTP_PASSWORD
+FROM_EMAIL=YOUR_FROM_EMAIL_TO_SEND_ALL_EMAIL
+REDIS_HOST=redis
+SECRET_KEY=YOUR_JWT_SECRET_KEY
+```
 3.  **Build and Run:**
     ```sh
     docker-compose up --build -d
